@@ -4,11 +4,6 @@ from app.models.item_model import ItemJson
 
 StoreJson = Dict[str, Union[int, str, List[ItemJson]]]
 
-#  black is very good for formatting python
-#  to run black run with "black ."
-# use black and do typing
-
-
 class StoreModel(db.Model):
     __tablename__ = "stores"
 

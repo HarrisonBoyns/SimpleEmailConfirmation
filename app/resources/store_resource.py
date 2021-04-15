@@ -15,8 +15,8 @@ SUCCESS = "success"
 store_schema = StoreSchema()
 store_schema_list = StoreSchema(many=True)
 
-class Store(Resource):
 
+class Store(Resource):
     @classmethod
     @jwt_required()
     def get(cls, name: str):
@@ -30,7 +30,6 @@ class Store(Resource):
     def post(cls, name: str):
 
         json_item = StoreModel.find_by_name(name)
-        print(json_item)
         if json_item is not None:
             return {"message": ITEM_WITH_NAME_EXISTS}, 404
         store_item = store_schema.load(request.get_json())
@@ -55,7 +54,6 @@ class Store(Resource):
     def put(cls, name: str):
         data = store_schema.load(request.get_json())
         store_model = StoreModel.find_by_name(name)
-        print(store_model)
         if store_model is None:
             store_model = data
         else:

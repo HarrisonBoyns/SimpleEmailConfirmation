@@ -13,8 +13,8 @@ SUCCESS = "success"
 item_schema = ItemSchema()
 item_list_schema = ItemSchema(many=True)
 
-class Items(Resource):
 
+class Items(Resource):
     @classmethod
     def get(cls, name: str):
         item_json = ItemModel.find_by_name(name)

@@ -1,10 +1,6 @@
 from app.database.db import db
 from typing import Dict, List, Union
 
-# to use complex types one must import them from the typing module
-# used to help you hint. Doesn't cause program to crash
-# place constants in a constant file --> good form
-
 ItemJson = Dict[str, Union[int, str, float]]
 
 

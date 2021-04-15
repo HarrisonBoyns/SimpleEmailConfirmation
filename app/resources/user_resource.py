@@ -1,13 +1,14 @@
-from flask import request
+import traceback
+
+from flask import request, render_template, make_response
 from flask_jwt_extended import (
     jwt_required,
     get_jwt,
     create_access_token,
     create_refresh_token,
-    get_jwt_identity,
 )
-from marshmallow import ValidationError
 
+from app.libs.mailgun import MailGunException
 from app.schemas.user_schema import UserSchema
 from flask_restful import Resource
 from werkzeug.security import safe_str_cmp
@@ -15,7 +16,8 @@ from app.models.user_model import UserModel
 
 BLACK_ERROR = "{} cannot be blank"
 USER_NAME_EXISTS = "user with this username already exists"
-USER_CREATED = "user created successfully"
+EMAIL_ALREADY_EXISTS = "user with this email already exists"
+EMAIL_SENT = "account successfully created and an email sent"
 USER_NOT_FOUND = "user not found"
 DELETED = "deleted"
 SUCCESS = "success"
@@ -23,19 +25,15 @@ INVALID_CREDENTIALS = "invalid credentials"
 LOGGED_OUT = "Logged out"
 NOT_CONFIRMED = "Account not activated please check email and confirm {}!"
 USER_ACTIVATED = "User has been activated"
-
+FAILED_TO_CREATE = "Failed to create"
 revoked_tokens = []
 
 user_schema = UserSchema()
 
-
-#  -- > shift + F6 to rename the data within the current scope
-# --> to extract and maniuplate a variable use refeactor --> extract --> variable
-
 class UserLogin(Resource):
     @classmethod
     def post(cls):
-        user_data = user_schema.load(request.get_json())
+        user_data = user_schema.load(request.get_json(), partial=("email",))
 
         user = UserModel.find_by_username(user_data.username)
 
@@ -43,7 +41,10 @@ class UserLogin(Resource):
             if user.activated:
                 access_token = create_access_token(identity=user.id, fresh=True)
                 refresh_token = create_refresh_token(user.id)
-                return {"access_token": access_token, "refresh_token": refresh_token}, 200
+                return {
+                    "access_token": access_token,
+                    "refresh_token": refresh_token,
+                }, 200
             return {"message": NOT_CONFIRMED.format(user.username)}
         return {"message": INVALID_CREDENTIALS}, 401
 
@@ -52,13 +53,22 @@ class UserRegister(Resource):
     def post(self):
         user_data = user_schema.load(request.get_json())
 
-        item = UserModel.find_by_username(user_data.username)
-
-        if item:
+        if UserModel.find_by_username(user_data.username):
             return {"message": USER_NAME_EXISTS}, 400
 
-        user_data.save_to_db()
-        return {"message": USER_CREATED}
+        if UserModel.find_by_email(user_data.email):
+            return {"message": EMAIL_ALREADY_EXISTS}, 400
+
+        try:
+            user_data.save_to_db()
+            user_data.send_confirmation_email()
+            return {"message": EMAIL_SENT}
+        except MailGunException as e:
+            user_data.delete()
+            return {"message": str(e)}, 500
+        except:
+            user_data.delete()
+            return {"message": FAILED_TO_CREATE}, 500
 
 
 class AllUsers(Resource):
@@ -111,5 +121,10 @@ class UserConfirm(Resource):
         if user:
             user.activated = True
             user.save_to_db()
-            return {"message": USER_ACTIVATED}, 200
+            headers = {"Content-Type": "text/html"}
+            return make_response(
+                render_template(
+                    "confirmation_page.html", email=user.username, headers=headers
+                )
+            )
         return {"message": USER_NOT_FOUND}, 400

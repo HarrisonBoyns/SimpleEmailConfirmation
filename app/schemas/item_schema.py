@@ -1,6 +1,6 @@
-from app.ma import ma
+from app.libs.ma import ma
 from app.models.item_model import ItemModel
-from app.models.store_model import StoreModel
+
 
 class ItemSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
@@ -9,4 +9,3 @@ class ItemSchema(ma.SQLAlchemyAutoSchema):
         dump_only = ("id",)
         include_fk = True
         load_instance = True
-
